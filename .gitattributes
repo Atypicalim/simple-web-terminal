@@ -1,1 +1,2 @@
 *.png linguist-language=go
+*.html linguist-language=JavaScript
