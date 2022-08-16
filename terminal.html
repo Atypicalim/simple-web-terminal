@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal</title>
+</head>
+<style type="text/css">
+    * {
+        box-sizing: border-box;
+        vertical-align: middle;
+        padding: 0;
+        margin: 0px;
+        color: rgb(243, 243, 243);
+    }
+    body {
+        width: 100%;
+        height: 100%;
+        background-color: #000000;
+        position: absolute;
+        top: 0px;
+    }
+    button {
+        background-color: #3d3d3d;
+        color: #fff;
+        width: 100px;
+        height: 30px;
+    }
+    /* common */
+    .centerContainer {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        height: 96vh;
+        width: 98vw;
+        padding: 10px;
+        background-color: rgba(255, 255, 255, 0.048);
+        border: 1px solid rgb(255, 252, 252);
+        border-radius: 5px;
+    }
+    .hiddenNode {
+        visibility: hidden;
+    }
+    /* terminal */
+    #nodeTerminal {
+        visibility: hidden;
+    }
+    #nodeCommand {
+        height: 100%;
+        width: 100%;
+        border-radius: 5px;
+        justify-content: center;
+        align-items: stretch;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+        overflow: scroll;
+        font-size: 20px;
+    }
+    #nodeCommand::-webkit-scrollbar {
+        display: none;
+    }
+    #inputCommand {
+        width: 100%;
+        background-color: transparent;
+        border: 0px solid transparent;
+        border-radius: 3px;
+        margin-top: 10px;
+        padding: 0px 5px;
+        font-size: 18px;
+    }
+    #inputCommand:focus {
+        outline-width: 0;
+    }
+    .logItem {
+        text-align: left;
+        font-size: 15px;
+    }
+    /* upload */
+    #nodeUpload {
+        visibility: hidden;
+        background-color: rgba(0, 0, 0, 0.726);
+    }
+    #formUpload {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 250px;
+        height: 75px;
+        background-color: rgb(8, 8, 8);
+    }
+    /* edit */
+    #nodeEditor {
+        visibility: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+    }
+    #bottomEdit {
+        position: relative;
+        height: 30px;
+        width: 100%;
+        bottom: -10px;
+        margin: 0 auto;
+        background: transparent;
+        border-top: 1px solid rgba(255, 255, 255, 0.11);
+    }
+    #textEdit {
+        height: 100%;
+        width: 100%;
+        display: block;
+        flex-grow: 1;
+        margin: 0 auto;
+        resize: none;
+        padding-left: 5px;
+        padding-right: 5px;
+        background-color: transparent;
+        line-height: 20px;
+        font-size: 13px;
+        overflow-y: scroll;
+        overflow-x: scroll;
+        -ms-overflow-style: none;  /* Internet Explorer 10+ */
+        scrollbar-width: none;  /* Firefox */
+        -webkit-box-shadow: none;
+        -moz-box-shadow: none;
+        box-shadow: none;
+        outline: none;
+        border: none;
+    }
+    #textEdit::-webkit-scrollbar { 
+        display: none;  /* Safari and Chrome */
+    }
+    #textEdit:focus {
+        outline: none;
+    }
+</style>
+<body>
+    <div id="nodeTerminal" class="centerContainer">
+        <div id="nodeCommand">
+            <input id="inputCommand" type="text" autocomplete="off" name="inputCommand">
+        </div>
+    </div>
+    <div id="nodeUpload" class="centerContainer" >
+        <form id="formUpload" class="centerContainer" enctype="multipart/form-data" method="POST" >
+            <input id="fileUpload" class="input file-input" type="file" name="fileUpload" style="display: none;" />
+            <button id="btnUploadOk" type="button">Select</button>
+            &nbsp;&nbsp;&nbsp;
+            <button id="btnUploadNo" type="button">Cancel</button>
+        </form>
+    </div>
+    <form id="nodeEditor" class="centerContainer" enctype="multipart/form-data" method="POST">
+        <textarea id="textEdit" autofocus="true" name="textEdit" wrap="off" readonly="true">hello...</textarea>
+        <div id="bottomEdit">
+            <span id="spanEdit">editing...</span>
+        </div>
+    </form>
+</body>
+<script type="text/javascript">
+    //
+    var nodeTarminal = document.querySelector("#nodeTarminal");
+    var nodeUpload = document.querySelector("#nodeUpload");
+    var nodeEditor = document.querySelector("#nodeEditor");
+    //
+    var nodeCommand = document.querySelector("#nodeCommand");
+    var inputCommand = document.querySelector("#inputCommand");
+    var textEdit = document.querySelector("#textEdit");
+    //
+    const TAG_ERR= "swt_error:"
+    const TAG_LOGIN = "swt_login:"
+    var visibleStage = null;
+    var logCount = 0;
+    var ws = null;
+    var isConnected = false;
+    var isLogged = false;
+    var isExecuting = false;
+    var commandQueue = [];
+    var pathFlag = null;
+    //
+    var MD5 = function(d){var r = M(V(Y(X(d),8*d.length)));return r.toLowerCase()};function M(d){for(var _,m="0123456789ABCDEF",f="",r=0;r<d.length;r++)_=d.charCodeAt(r),f+=m.charAt(_>>>4&15)+m.charAt(15&_);return f}function X(d){for(var _=Array(d.length>>2),m=0;m<_.length;m++)_[m]=0;for(m=0;m<8*d.length;m+=8)_[m>>5]|=(255&d.charCodeAt(m/8))<<m%32;return _}function V(d){for(var _="",m=0;m<32*d.length;m+=8)_+=String.fromCharCode(d[m>>5]>>>m%32&255);return _}function Y(d,_){d[_>>5]|=128<<_%32,d[14+(_+64>>>9<<4)]=_;for(var m=1732584193,f=-271733879,r=-1732584194,i=271733878,n=0;n<d.length;n+=16){var h=m,t=f,g=r,e=i;f=md5_ii(f=md5_ii(f=md5_ii(f=md5_ii(f=md5_hh(f=md5_hh(f=md5_hh(f=md5_hh(f=md5_gg(f=md5_gg(f=md5_gg(f=md5_gg(f=md5_ff(f=md5_ff(f=md5_ff(f=md5_ff(f,r=md5_ff(r,i=md5_ff(i,m=md5_ff(m,f,r,i,d[n+0],7,-680876936),f,r,d[n+1],12,-389564586),m,f,d[n+2],17,606105819),i,m,d[n+3],22,-1044525330),r=md5_ff(r,i=md5_ff(i,m=md5_ff(m,f,r,i,d[n+4],7,-176418897),f,r,d[n+5],12,1200080426),m,f,d[n+6],17,-1473231341),i,m,d[n+7],22,-45705983),r=md5_ff(r,i=md5_ff(i,m=md5_ff(m,f,r,i,d[n+8],7,1770035416),f,r,d[n+9],12,-1958414417),m,f,d[n+10],17,-42063),i,m,d[n+11],22,-1990404162),r=md5_ff(r,i=md5_ff(i,m=md5_ff(m,f,r,i,d[n+12],7,1804603682),f,r,d[n+13],12,-40341101),m,f,d[n+14],17,-1502002290),i,m,d[n+15],22,1236535329),r=md5_gg(r,i=md5_gg(i,m=md5_gg(m,f,r,i,d[n+1],5,-165796510),f,r,d[n+6],9,-1069501632),m,f,d[n+11],14,643717713),i,m,d[n+0],20,-373897302),r=md5_gg(r,i=md5_gg(i,m=md5_gg(m,f,r,i,d[n+5],5,-701558691),f,r,d[n+10],9,38016083),m,f,d[n+15],14,-660478335),i,m,d[n+4],20,-405537848),r=md5_gg(r,i=md5_gg(i,m=md5_gg(m,f,r,i,d[n+9],5,568446438),f,r,d[n+14],9,-1019803690),m,f,d[n+3],14,-187363961),i,m,d[n+8],20,1163531501),r=md5_gg(r,i=md5_gg(i,m=md5_gg(m,f,r,i,d[n+13],5,-1444681467),f,r,d[n+2],9,-51403784),m,f,d[n+7],14,1735328473),i,m,d[n+12],20,-1926607734),r=md5_hh(r,i=md5_hh(i,m=md5_hh(m,f,r,i,d[n+5],4,-378558),f,r,d[n+8],11,-2022574463),m,f,d[n+11],16,1839030562),i,m,d[n+14],23,-35309556),r=md5_hh(r,i=md5_hh(i,m=md5_hh(m,f,r,i,d[n+1],4,-1530992060),f,r,d[n+4],11,1272893353),m,f,d[n+7],16,-155497632),i,m,d[n+10],23,-1094730640),r=md5_hh(r,i=md5_hh(i,m=md5_hh(m,f,r,i,d[n+13],4,681279174),f,r,d[n+0],11,-358537222),m,f,d[n+3],16,-722521979),i,m,d[n+6],23,76029189),r=md5_hh(r,i=md5_hh(i,m=md5_hh(m,f,r,i,d[n+9],4,-640364487),f,r,d[n+12],11,-421815835),m,f,d[n+15],16,530742520),i,m,d[n+2],23,-995338651),r=md5_ii(r,i=md5_ii(i,m=md5_ii(m,f,r,i,d[n+0],6,-198630844),f,r,d[n+7],10,1126891415),m,f,d[n+14],15,-1416354905),i,m,d[n+5],21,-57434055),r=md5_ii(r,i=md5_ii(i,m=md5_ii(m,f,r,i,d[n+12],6,1700485571),f,r,d[n+3],10,-1894986606),m,f,d[n+10],15,-1051523),i,m,d[n+1],21,-2054922799),r=md5_ii(r,i=md5_ii(i,m=md5_ii(m,f,r,i,d[n+8],6,1873313359),f,r,d[n+15],10,-30611744),m,f,d[n+6],15,-1560198380),i,m,d[n+13],21,1309151649),r=md5_ii(r,i=md5_ii(i,m=md5_ii(m,f,r,i,d[n+4],6,-145523070),f,r,d[n+11],10,-1120210379),m,f,d[n+2],15,718787259),i,m,d[n+9],21,-343485551),m=safe_add(m,h),f=safe_add(f,t),r=safe_add(r,g),i=safe_add(i,e)}return Array(m,f,r,i)}function md5_cmn(d,_,m,f,r,i){return safe_add(bit_rol(safe_add(safe_add(_,d),safe_add(f,i)),r),m)}function md5_ff(d,_,m,f,r,i,n){return md5_cmn(_&m|~_&f,d,_,r,i,n)}function md5_gg(d,_,m,f,r,i,n){return md5_cmn(_&f|m&~f,d,_,r,i,n)}function md5_hh(d,_,m,f,r,i,n){return md5_cmn(_^m^f,d,_,r,i,n)}function md5_ii(d,_,m,f,r,i,n){return md5_cmn(m^(_|~f),d,_,r,i,n)}function safe_add(d,_){var m=(65535&d)+(65535&_);return(d>>16)+(_>>16)+(m>>16)<<16|65535&m}function bit_rol(d,_){return d<<_|d>>>32-_}
+    //
+    function saveFile(filename, text) {
+        var pom = document.createElement('a');
+        pom.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+        pom.setAttribute('download', filename);
+        if (document.createEvent) {
+            var event = document.createEvent('MouseEvents');
+            event.initEvent('click', true, true);
+            pom.dispatchEvent(event);
+        } else {
+            pom.click();
+        }
+    }
+    function doCommitForm(formId, url, okCallback, noCallback) {
+        let formData = new FormData(document.getElementById(formId));
+        fetch(url, {method: "POST", body: formData }).then((arg) => new Promise(resolve => setTimeout(function() {
+            resolve(arg)
+        }, 250))).then(response => {
+            if (!response.ok) return response.text().then(text => { throw new Error(text) })
+            if (response.ok) return response.text();
+        }).then(data => {
+            okCallback(data);
+        }).catch(err => {
+            noCallback(err.toString());
+        });
+    }
+    function changeStage(visibleNode) {
+        visibleStage = visibleNode;
+        nodeTerminal.style.visibility = visibleNode != nodeEditor ? "visible" : "hidden";
+        nodeUpload.style.visibility = visibleNode == nodeUpload ? "visible" : "hidden";
+        nodeEditor.style.visibility = visibleNode == nodeEditor ? "visible" : "hidden";
+        if (visibleNode == nodeEditor) {
+            initEdit();
+        } else if (visibleNode == nodeTerminal) {
+            terminalCheckFinish();
+        }
+    }
+    function insertLog(log) {
+        logCount++;
+        var itemNode = document.createElement("pre");
+        var currDate = new Date();
+        var timeDesc = ("0" + currDate.getHours()).slice(-2) + ":" + ("0" + currDate.getMinutes()).slice(-2) + ":" + ("0" + currDate.getSeconds()).slice(-2);
+        itemNode.classList.add("logItem");
+        itemNode.innerHTML = "[" + ("000" + logCount).slice(-4) + "] [" + timeDesc + "] " + log;
+        nodeCommand.insertBefore(itemNode, inputCommand);
+    }
+    // upload
+    document.querySelector("#fileUpload").onchange = function() {
+        doCommitForm("formUpload", "./upload?flag=" + pathFlag, function(data) {
+            document.querySelector("#fileUpload").value = "";
+            insertLog("💻:upload finished!");
+            pathFlag = null;
+            changeStage(nodeTerminal);
+        }, function(err) {
+            insertLog("⚠️:upload error:" + err);
+            pathFlag = null;
+            changeStage(nodeTerminal);
+        });
+    }
+    document.querySelector("#btnUploadOk").onclick = function() {
+        document.getElementById('fileUpload').click();
+    }
+    document.querySelector("#btnUploadNo").onclick = function() {
+        insertLog("⚠️:upload cancelled!");
+        pathFlag = null;
+        changeStage(nodeTerminal);
+    }
+    // edit
+    var MODE_NORMAL = "normal";
+    var MODE_INSERT = "insert";
+    var MODE_COMMAND = "command";
+    var MODE_VISUAL = "visual";
+    var editorMode = null;
+    var editorCommand = ""
+    var editorIsChanged = false;
+    function editorDoSave(successCallback, failCallback) {
+        editorOnInfo("writing ...");
+        doCommitForm("nodeEditor", "./edit?flag=" + pathFlag, function(data) {
+            insertLog("💻:edit saved!");
+            editorOnMode(MODE_NORMAL);
+            successCallback(data);
+        }, function(err) {
+            insertLog("⚠️:edit error:" + err);
+            editorOnMode(MODE_NORMAL);
+            failCallback(err);
+        });
+    }
+    function editorDoQuit() {
+        editorOnInfo("quitting...");
+        insertLog("💻:edit finished!");
+        setTimeout(() => {
+            pathFlag = null;
+            changeStage(nodeTerminal);
+        }, 100);
+    }
+    textEdit.oninput = function() {
+        editorIsChanged = true;
+    }
+    function editorOnMode(mode) {
+        editorMode = mode;
+        editorCommand = "";
+        textEdit.readOnly = mode == MODE_INSERT ? false : true;
+        if(!textEdit.readOnly) textEdit.blur();
+        if(!textEdit.readOnly) textEdit.focus();
+        editorOnInfo("");
+        if(mode == MODE_INSERT) editorOnInfo("-- INERT --");
+        if(mode == MODE_VISUAL) editorOnInfo("-- VISUAL --");
+    }
+    function editorOnInfo(info) {
+        document.querySelector("#spanEdit").innerHTML = info
+    }
+    function editorOnKey(e) {
+        if (editorMode == MODE_INSERT && e.key != "Escape") {
+            return;
+        } else if (e.key == "Escape") {
+            editorOnMode(MODE_NORMAL);
+            return;
+        } else if (editorMode == MODE_NORMAL && editorCommand.length == 0 && "aios".includes(e.key)) {
+            editorOnMode(MODE_INSERT);
+            return;
+        } else if (editorMode == MODE_NORMAL && editorCommand.length == 0 && "v".includes(e.key)) {
+            editorOnMode(MODE_VISUAL);
+            return;
+        } else if (editorMode == MODE_NORMAL && editorCommand.length == 0 && e.key == ":") {
+            editorOnMode(MODE_COMMAND);
+            editorCommand += ":";
+            editorOnInfo(editorCommand);
+            return;
+        } else if (editorMode == MODE_COMMAND && e.key.length == 1) {
+            editorCommand += e.key;
+            editorOnInfo(editorCommand);
+            return;
+        } else if (editorMode == MODE_COMMAND && e.key == "Backspace") {
+            if (editorCommand.length >= 1) editorCommand = editorCommand.substring(0, editorCommand.length - 1);
+            if (editorCommand.length == 0) editorOnMode(MODE_NORMAL);
+            editorOnInfo(editorCommand);
+            return;
+        } else if (editorMode != MODE_COMMAND || e.key != "Enter") {
+            return;
+        }
+        var cmd = editorCommand.trim().substring(1);
+        if (cmd == "q!" || cmd == "q") {
+            editorDoQuit();
+        } else if (cmd == "w!" || cmd == "w") {
+            editorDoSave(function() {}, function() {});
+        } else if (cmd == "wq!" || cmd == "wq") {
+            editorDoSave(function(data) {
+                editorDoQuit();
+            }, function(err) {
+                editorOnInfo(err);
+            });
+        } else {
+            editorOnMode(MODE_NORMAL);
+        }
+    }
+    function initEdit() {
+        editorOnMode(MODE_NORMAL);
+        fetch("./edit?flag=" + pathFlag + "&t=" + Date.now(), {method: "GET"}).then(response => {
+            if (!response.ok) return response.text().then(text => { throw new Error(text) })
+            if (response.ok) return response.text();
+        }).then(data => {
+            textEdit.value = data;
+        }).catch(err => {
+            insertLog("⚠️:editor error:" + err);
+            editorDoQuit();
+        });
+    }
+    // local
+    var LOCAL_COMMANDS_COUNT = 25;
+    var LOCAL_COMMANDS_KEY = "COMMANDS_TEST1";
+    var LOCAL_COMMANDS_LENGTH = 50;
+    var localCommandIndex = 0;
+    var  localCommandCache = "";
+    function localReadCommands() {
+        var commandsStr = localStorage.getItem(LOCAL_COMMANDS_KEY);
+        return JSON.parse(commandsStr != undefined ? commandsStr : "[]");
+    }
+    function localSaveCommand(command) {
+        var commandsArr = localReadCommands();
+        command = command.length <= LOCAL_COMMANDS_LENGTH ? command : command.substring(0, LOCAL_COMMANDS_LENGTH);
+        if (command == commandsArr[commandsArr.length - 1]) return;
+        commandsArr.push(command);
+        var from = Math.max(0, commandsArr.length - LOCAL_COMMANDS_COUNT)
+        commandsArr = commandsArr.slice(from, commandsArr.length);
+        localStorage.setItem(LOCAL_COMMANDS_KEY, JSON.stringify(commandsArr));
+        localCommandIndex = 0;
+        localCommandCache = "";
+    }
+    function localGetCommand(indent) {
+        var commandsArr = localReadCommands();
+        localCommandIndex += indent;
+        localCommandIndex = Math.max(0, Math.min(commandsArr.length, localCommandIndex));
+        return commandsArr[commandsArr.length - localCommandIndex];
+    }
+    // terminal
+    function initTerminal() {}
+    function terminalOnKey(e) {
+        var indent = null;
+        if (e.key == "ArrowUp") {
+            if (localCommandIndex == localReadCommands().length) return;
+            indent = 1;
+        } else if (e.key == "ArrowDown") {
+            if (localCommandIndex == 0) return;
+            indent = -1;
+        }
+        if (isConnected && isLogged && indent != null) {
+            var last = localCommandIndex;
+            var cmd = localGetCommand(indent);
+            if (cmd) {
+                if (last == 0) localCommandCache = inputCommand.value;
+                inputCommand.value = cmd;
+            } else {
+                inputCommand.value = localCommandCache;
+            }
+        }
+    }
+    function terminalDoRequest(command) {
+        if (!isConnected) {
+            return;
+        }
+        if (isExecuting) {
+            commandQueue.push(command);
+            return;
+        }
+        isExecuting = true;
+        inputCommand.disabled = true;
+        inputCommand.value = "";
+        insertLog("🖊️:" + (isLogged ? command : "*".repeat(command.length)));
+        ws.send(isLogged ? command : "login " + MD5(command));
+        nodeCommand.scrollTop = nodeCommand.scrollHeight;
+    }
+    function terminalOnResponse(msg) {
+        if (msg.startsWith(TAG_LOGIN)) {
+            var state = msg.substring(TAG_LOGIN.length);
+            if (state == "ignore") {
+                isLogged = true;
+                insertLog("💻:ignore login!");
+                terminalDoRequest("help");
+                terminalDoRequest("pwd");
+            }else if (state == "start") {
+                isLogged = false;
+                insertLog("💻:need login!");
+            } else if (state == "finish") {
+                isLogged = true;
+                insertLog("💻:login successful!");
+                terminalDoRequest("help");
+                terminalDoRequest("pwd");
+            }
+        } else if (msg.startsWith("swt_save:")) {
+            insertLog("💻:saving...");
+            saveFile('terminal.txt', nodeCommand.innerText);
+            insertLog("💻:save finished!");
+        } else if (msg.startsWith("swt_static:")) {
+            insertLog("💻:jumping...");
+            window.open("./static?t=" + Date.now(), "_blank");
+            insertLog("💻:jump finished!");
+        } else if (msg.startsWith("swt_download:")) {
+            insertLog("💻:downloading...");
+            pathFlag = msg.substring(13);
+            window.location.assign("./download?flag=" + pathFlag + "&t=" + Date.now());
+            insertLog("💻:download finished!");
+            changeStage(nodeTerminal);
+            return;
+        } else if (msg.startsWith("swt_upload:")) {
+            insertLog("💻:uploading...");
+            pathFlag = msg.substring(11);
+            changeStage(nodeUpload);
+            return;
+        } else if (msg.startsWith("swt_edit:")) {
+            insertLog("💻:editing...");
+            pathFlag = msg.substring(9);
+            changeStage(nodeEditor);
+            return;
+        } else if (msg.indexOf("\n") < 0) {
+            insertLog(msg.startsWith(TAG_ERR) ? "⚠️:" + msg.substring(TAG_ERR.length) : "💻:" + msg);
+        } else {
+            insertLog(msg.startsWith(TAG_ERR) ? "⚠️:" : "💻:");
+            msg = msg.startsWith(TAG_ERR) ? msg.substring(TAG_ERR.length) : msg
+            msg.split("\n").forEach(element => { insertLog(("  ") + element) });
+        }
+        setTimeout(() => {
+            terminalCheckFinish();
+        }, 100);
+    }
+    function terminalCheckFinish(tip) {
+        nodeCommand.scrollTop = nodeCommand.scrollHeight;
+        isExecuting = false;
+        if (commandQueue.length > 0) {
+            terminalDoRequest(commandQueue.shift());
+            return;
+        }
+        inputCommand.disabled = false;
+        tip = isLogged ? "command" : "password";
+        if (isConnected) {
+            insertLog("🔊:please input " + tip + ":");
+            inputCommand.focus();
+        }
+    }
+    //
+    inputCommand.focus();
+    inputCommand.onkeydown = function(e) {
+        if (e.key != "Enter") {
+            return;
+        }
+        var command = inputCommand.value.trim();
+        if (isLogged && command.length <= 0) {
+            terminalCheckFinish();
+            return;
+        } else if (!isConnected) {
+            insertLog("invalid connection!");
+            return;
+        } else if(isExecuting) {
+            insertLog("please wait!");
+            return;
+        }
+        terminalDoRequest(command);
+        if (isLogged) localSaveCommand(command);
+    }
+    //
+    document.addEventListener('keyup', (e) => {
+        if(visibleStage == nodeEditor) editorOnKey(e);
+        if(visibleStage == nodeTerminal) terminalOnKey(e);
+    });
+    //
+    changeStage(nodeTerminal);
+    insertLog("👋:simple web terminal ...");
+    insertLog("😼:<a href=\"https://github.com/kompasim\" target=\"_blank\">github<a>");
+    insertLog("🔊:" + new Date());
+    insertLog("🔊:connecting socket...");
+    ws = new WebSocket("ws://" + location.host + "/terminal");
+    ws.onopen = function() {
+        isConnected = true;
+        isLogged = false;
+        isExecuting = true;
+        insertLog("🔊:socket opened!");
+    };
+    ws.onclose = function(err) {
+        insertLog("🔊:socket closed!");
+        isConnected = false;
+        isLogged = false;
+        isExecuting = false;
+        inputCommand.disabled = false;
+    };
+    ws.onmessage = function (evt) { 
+        terminalOnResponse(evt.data);
+    };
+    //
+</script>
+</html>
