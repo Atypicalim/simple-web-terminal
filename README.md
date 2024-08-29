@@ -14,7 +14,7 @@ tested platforms:
 
 ### 2. Usage
 
-there are standalone executable programs provided on the [release](https://github.com/kompasim/simple-web-terminal/releases/) page, you can download the corresponding one for you platform and double click to start it. then you will see the below log in console:
+there are standalone executable programs provided on the release page, you can download the corresponding one for you platform and double click to start it. then you will see the below log in console:
 
 ![console](others/console.png)
 
