@@ -1,3 +1,5 @@
+
+
 ## Simple Web Terminal
 
 > ⚠️ Don't put this program on the server until you know what you're doing, is is not safe!
@@ -8,7 +10,7 @@ Simple Web Terminal is a web-based terminal application, you can run this applic
 
 tested platforms:
 
-* ☑ Widnows
+* ☑ Windows
 * ☑ mac
 * ☑ linux
 
